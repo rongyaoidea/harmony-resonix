@@ -118,3 +118,31 @@
 | 审批 UI 产品化 | index.html 自定义审批卡片（ACP options 忠实呈现） |
 | HAP 命令行构建链 | §1 存档（工程外环境执行） |
 | 移动端安全区 | viewport-fit=cover + env(safe-area-inset-*) |
+
+## 8. 鸿蒙运行 Linux 后端环境的方案矩阵（2026-09 补充调研）
+
+> 结论先行：**qemu-user（当前路线）是免 root、跨手机/平板/2in1 的均衡解**；
+> 追求完整网络栈选 **HiSH（qemu-system 全系统模拟）**；PC 上追求原生性能可试
+> **proot（HNP 生态已适配）或 ohos-bst-light 自签直跑**；零风险兜底是 **SSH 远程**。
+
+| 路线 | 代表项目/工具 | 原理 | 手机 | 完整内核/网络栈 | 关键限制 |
+|---|---|---|---|---|---|
+| **用户态指令翻译**（当前） | Termony（qemu-vroot，qemu-linux-user fork） | 有签名的 qemu-user 加载未签名 Linux ELF，逐指令翻译 + syscall 转发，共享宿主内核 | ✅ | ❌ 共享宿主网络栈（loopback 直达宿主，本项目正利用此点） | TCG 有性能损耗；宿主 seccomp 仍约束全部 syscall |
+| **用户态 ptrace 虚拟化** | proot（termux/proot + ohos.patch，鸿蒙 PC HNP 生态已构建成功） | ptrace 拦截/重定向 syscall，实现无 root chroot/bind-mount/binfmt；同架构**零指令翻译** | ⚠️ PC 已验证，手机待验证（需 seccomp 放行 ptrace） | ❌ 同上（共享宿主内核） | 依赖 ptrace 可用性；被拦截 syscall 同样受限 |
+| **全系统模拟** | **HiSH**（harmoninux/HiSH，基于 hackeris/harmony-qemu） | qemu-system-aarch64 TCG 跑**完整 arm64 Linux 内核** + qcow2 rootfs | ✅（应用市场版无 JIT；自签版有 JIT，Phone 不支持 JIT） | ✅ **独立内核 + 独立网络栈 + 端口转发 + 共享文件夹** | TCG 性能一般；rootfs 镜像体积大；「关于」页需注明基于 HiSH（其许可要求） |
+| **ELF 自签直跑**（零模拟） | ohos-bst-light（self-sign.c）/ 官方 binary-sign-tool | 给 Linux ELF 附加 `.codesign` 段，直接跑在鸿蒙宿主 musl 上 | ❌ **仅鸿蒙 6 PC（HiShell）**，鸿蒙 5 不支持 | ❌（无隔离，直跑宿主） | 仅静态/自包含二进制（glibc 动态链接不行）；seccomp 拦截的 syscall（如 close_range）需 LD_PRELOAD 垫片；社区已用此法在鸿蒙 PC 跑通 Claude Code（Bun 版） |
+| **硬件虚拟化（KVM 类）** | 无 | 三方应用拿不到 EL2/虚拟化 API | ❌ | — | 官方未开放，不可行 |
+| **远程 Linux（兜底）** | SSH 客户端 / 华为云 DevBox | 手机做瘦客户端连云端/局域网 Linux | ✅ | ✅（在远端） | 依赖网络；无离线能力 |
+
+### 对本工程的具体建议
+
+1. **保持 qemu-vroot 为主线**：唯一同时满足「免 root + 手机/平板/PC 三端 + 无第三方 App 依赖」的路线；本项目 Web 桥架构（loopback 直达宿主）恰好规避了 qemu-user 无独立网络栈的短板。
+2. **性能升级备选**：同架构下把 qemu-vroot 换成 **proot** 可省掉指令翻译（理论上显著提速），且 rootfs 布局不变（bridge/reasonix 二进制可复用）；风险点是手机端 ptrace 是否被 seccomp 放行——实机验证后可作 build 选项。
+3. **重依赖发行版场景**：若未来需要 apt 全量生态（GPU/桌面/数据库），**HiSH** 是现成容器：把 bridge/reasonix 装进其 Ubuntu/Debian rootfs，App 侧 UI 改连 HiSH 的端口转发地址即可，工程架构无需改动。
+4. **鸿蒙 6 PC 专属捷径**：bridge 为 Go **纯静态** ELF，是 ohos-bst-light 自签直跑的理想候选——若验证通过，2in1 上可**完全去掉 qemu/rootfs 层**（直跑宿主 musl），详见 docs/DEPLOY.md「宿主直跑」实验路径。
+5. **零风险兜底**：bridge 本就监听 TCP，把 `--addr` 绑到局域网 + UI 的 engineUrl 指向远端，即是 SSH/远程部署形态，任何鸿蒙设备可用。
+
+来源：HiSH（github.com/zzh-FLY/HiSH、harmoninux/HiSH）、harmony-qemu（hackeris）、
+proot 鸿蒙 PC 构建指南（CSDN 开源鸿蒙PC社区 harmonypc.csdn.net）、ohos-bst-light
+（github.com/hqzing/ohos-bst-light）与鸿蒙 PC 运行 Claude Code 实践（HarmonyOS 开发者社区）、
+虎绿林 binary-sign-tool 讨论。
