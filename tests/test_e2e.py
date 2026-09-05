@@ -53,13 +53,14 @@ def rpc(s, m, expect_id, timeout=5):
         op, msg = ws_recv(s, timeout=deadline - time.time())
         if op == "ping":
             continue
-        # 引擎的工具审批请求：自动允许（覆盖 request_permission 往返）
+        # 模拟浏览器 UI 的工具审批行为（对应 index.html 的 request_permission 处理）
         if msg.get("method") == "session/request_permission":
-            opts = msg["params"].get("options", [])
-            allow = next((o for o in opts if str(o.get("kind","")).startswith("allow")), opts[0])
-            ws_send(s, {"jsonrpc":"2.0","id":msg["id"],
-                        "result":{"outcome":{"outcome":"selected","optionId":allow["optionId"]}}})
-            print(f"  [perm] auto-allowed: {msg['params'].get('toolCall',{}).get('title','')}")
+            opts = (msg.get("params") or {}).get("options", [])
+            allow = next((o for o in opts if str(o.get("kind", "")).startswith("allow")), opts[0] if opts else None)
+            ws_send(s, {"jsonrpc": "2.0", "id": msg["id"], "result": {
+                "outcome": {"outcome": "selected", "optionId": (allow or {}).get("optionId")}}})
+            title = ((msg.get("params") or {}).get("toolCall") or {}).get("title", "?")
+            print(f"  [perm] 已允许: {title}")
             continue
         if msg.get("id") == expect_id:
             return msg
