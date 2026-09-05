@@ -67,7 +67,9 @@ napi_value StartEngine(napi_env env, napi_callback_info info) {
 
     if (argc < 2) {
         napi_throw_error(env, nullptr, "StartEngine(cmd, args[, envPairs[, cwd]])");
-        return nullptr;
+        napi_value err;
+        napi_create_double(env, -1, &err);
+        return err;
     }
 
     std::string cmd = NapiGetString(env, argv[0]);
@@ -105,9 +107,9 @@ napi_value StartEngine(napi_env env, napi_callback_info info) {
         // —— 子进程 ——
         setsid();  // 新会话，脱离 UI 线程信号组
         int logfd = open(logPath.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0600);
-        if (logfd >= 0) { dup2(logfd, STDOUT_FILENO); dup2(logfd, STDERR_FILENO); }
+        if (logfd >= 0) { dup2(logfd, STDOUT_FILENO); dup2(logfd, STDERR_FILENO); close(logfd); }
         int nullfd = open("/dev/null", O_RDONLY);
-        if (nullfd >= 0) dup2(nullfd, STDIN_FILENO);
+        if (nullfd >= 0) { dup2(nullfd, STDIN_FILENO); close(nullfd); }
 
         // 与 Termony::Fork() 对齐的环境基线
         setenv("HOME", cwd.c_str(), 1);
@@ -171,8 +173,13 @@ napi_value EngineRunning(napi_env env, napi_callback_info) {
     if (g_engine_pid > 0) {
         int status = 0;
         pid_t r = waitpid(g_engine_pid, &status, WNOHANG);
-        // 0 = 仍在运行；>0 = 已退出；-1 = ECHILD（已被 reap 或非子进程，按未运行处理）
-        running = (r == 0);
+        // 0 = 仍在运行；>0 = 已退出（已 reap，重置避免脏值）
+        if (r == 0) {
+            running = true;
+        } else if (r > 0) {
+            g_engine_pid = -1;
+        }
+        // -1 = ECHILD（非子进程/已 reap）：按未运行处理，pid 保持由 StopEngine 负责清理
     }
     napi_value out;
     napi_get_boolean(env, running, &out);
@@ -181,9 +188,3 @@ napi_value EngineRunning(napi_env env, napi_callback_info) {
 
 } // namespace engine_napi
 
-void RegisterEngineNapi(napi_env env, napi_value exports) {
-    // 由 napi_init.cpp 在构造属性表时引用本文件的三个实现；
-    // 此处保留扩展点（如后续需要 engineLogTail 之类）。
-    (void)env;
-    (void)exports;
-}

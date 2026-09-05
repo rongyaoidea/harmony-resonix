@@ -26,7 +26,4 @@ napi_value EngineRunning(napi_env env, napi_callback_info info);
 
 } // namespace engine_napi
 
-// 注册到 libentry.so 的辅助入口（在 napi_init.cpp 的 Init 阶段调用）
-void RegisterEngineNapi(napi_env env, napi_value exports);
-
 #endif // ENGINE_H

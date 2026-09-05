@@ -144,21 +144,6 @@ function connect() {
           }}));
         }
         add('sys', `${ok ? '✅ 已允许' : '⛔ 已拒绝'}：${title}`);
-      } else if (m.method === 'session/request_permission') {
-        // ACP 工具审批：必须应答，否则引擎一直阻塞等待。
-        // HarmonyOS Web 组件会把 confirm() 渲染为原生对话框。
-        const p = m.params || {};
-        const opts = Array.isArray(p.options) ? p.options : [];
-        const allow = opts.find(o => String(o.kind || '').startsWith('allow')) || opts[0];
-        const reject = opts.find(o => String(o.kind || '').startsWith('reject'));
-        const title = p.toolCall?.title || p.toolCall?.toolCallId || '一次工具调用';
-        const ok = confirm(`resonix 请求执行工具：\n\n${title}\n\n允许本次调用？`);
-        const pick = ok ? allow : (reject || opts.find(o => o !== allow));
-        ws.send(JSON.stringify({
-          jsonrpc: '2.0', id: m.id,
-          result: { outcome: { outcome: pick ? 'selected' : 'cancelled', optionId: pick?.optionId } }
-        }));
-        add('sys', `${ok ? '✅ 已允许' : '⛔ 已拒绝'}：${title}`);
       } else if (m.method) {
         add('sys', JSON.stringify(m).slice(0, 200));
       }

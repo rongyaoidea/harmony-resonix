@@ -112,3 +112,10 @@ cd ../.. && ./scripts/apply-termony-patches.sh ../termony
 - Termony 当前 deviceTypes 为 **2in1**（鸿蒙电脑/平板形态）；消费级 NEXT 手机端待上游解锁；
 - resonix 官方未发布 linux-ohos 二进制，采用上游源码交叉编译 + rootfs 运行路径；
 - 引擎能力受 rootfs 内工具链限制（git/bash 在 rootfs 内需 apk add）。
+
+## 代码审查
+
+见 [docs/AUDIT.md](docs/AUDIT.md) —— v0.3 审查修复：index.html 重复分支死代码、engine.cpp
+启动失败误判、Web 审批 `onConfirm` 缺失、构建脚本 `./cmd/...` 误编译、ws 帧大小上限、
+引擎进程组清理单例、子进程 fd 泄漏、`EngineRunning` 脏值、删除 `RegisterEngineNapi` 空壳。
+

@@ -30,6 +30,8 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"syscall"
+	"time"
 )
 
 //go:embed index.html
@@ -53,13 +55,42 @@ type session struct {
 	ws    *wsConn
 }
 
+// 进程级单例：任一时刻只允许一个引擎在跑（避免 WebView 重连风暴堆积孤儿进程）
+var engineMu sync.Mutex
+var engineProc *exec.Cmd
+
+// killEngine 终止整个进程组（/bin/sh -c 派生的 qemu-vroot/bridge 一并清理）
+func killEngine() {
+	engineMu.Lock()
+	defer engineMu.Unlock()
+	if engineProc == nil || engineProc.Process == nil {
+		return
+	}
+	pgid := engineProc.Process.Pid
+	_ = syscall.Kill(-pgid, syscall.SIGTERM)
+	for i := 0; i < 30; i++ {
+		if syscall.Kill(-pgid, 0) != nil {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if syscall.Kill(-pgid, 0) == nil {
+		_ = syscall.Kill(-pgid, syscall.SIGKILL)
+	}
+	_, _ = engineProc.Process.Wait()
+	engineProc = nil
+}
+
 func (s *session) start() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.cmd != nil {
 		return nil
 	}
+	killEngine() // 清理任何残留引擎，保证全局单例
 	cmd := exec.Command("/bin/sh", "-c", *acpCmd)
+	// 独立进程组，便于整体终止（见 killEngine）
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return err
@@ -73,6 +104,9 @@ func (s *session) start() error {
 		return err
 	}
 	s.cmd, s.stdin = cmd, stdin
+	engineMu.Lock()
+	engineProc = cmd
+	engineMu.Unlock()
 	log.Printf("engine spawned: %s", *acpCmd)
 
 	// 引擎 stdout → WS（引擎 → 浏览器）
@@ -116,9 +150,7 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() {
-		if s.cmd != nil && s.cmd.Process != nil {
-			_ = s.cmd.Process.Kill()
-		}
+		killEngine()
 	}()
 
 	// WS → 引擎 stdin（浏览器 → 引擎）

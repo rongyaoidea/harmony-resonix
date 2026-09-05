@@ -192,6 +192,14 @@ struct AgentTab {
             .fileAccess(true)
             .databaseAccess(true)
             .zoomAccess(true)
+            .onConfirm((event) => {
+              // 让 HarmonyOS 弹出原生确认框（Web UI 内工具审批用 confirm() 触发）。
+              // 不在此自定义 UI；返回 true 表示交由系统默认确认框处理。
+              if (event && event.result) {
+                event.result.handleConfirm(true);
+              }
+              return true;
+            })
             .width('100%')
             .layoutWeight(1)
         }

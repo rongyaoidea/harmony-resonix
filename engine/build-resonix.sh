@@ -34,7 +34,9 @@ echo "==> [1/2] 构建 bridge（HTTP 桥 + Web UI 托管）"
 
 echo "==> [2/2] （可选）构建 resonix CLI 本体（终端形态用；Web 形态可跳过）"
 if [ -d "$SRC/cmd/reasonix" ] || [ -d "$SRC/cmd/resonix" ]; then
-  (cd "$SRC" && go build -trimpath -ldflags="-s -w" -o "$OUT/reasonix" ./cmd/...) || {
+  # 仅编译主命令 ./cmd/reasonix；不要 ./cmd/...（会连带拉 launcher/e2ebench 等，
+  # 其中部分依赖 cgo/GUI，CGO_ENABLED=0 下编译失败）
+  (cd "$SRC" && go build -trimpath -ldflags="-s -w" -o "$OUT/reasonix" ./cmd/reasonix) || {
     echo "    resonix CLI 构建失败（依赖/版本问题），Web 桥模式不受影响"; }
 fi
 

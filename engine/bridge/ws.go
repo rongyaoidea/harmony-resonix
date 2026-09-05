@@ -20,6 +20,9 @@ import (
 
 const wsGUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
+// maxFrameSize 防止恶意/错误帧长度导致 OOM：ACP 文本帧远小于此值。
+const maxFrameSize = 16 * 1024 * 1024
+
 type wsConn struct {
 	conn net.Conn
 	rw   *bufio.ReadWriter
@@ -87,6 +90,9 @@ func (c *wsConn) readFrame() (fin bool, opcode byte, payload []byte, err error) 
 			return
 		}
 		length = binary.BigEndian.Uint64(ext)
+	}
+	if length > maxFrameSize {
+		return false, 0, nil, errors.New("frame too large")
 	}
 	var mask [4]byte
 	if masked {
