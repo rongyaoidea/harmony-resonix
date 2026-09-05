@@ -46,6 +46,7 @@ harmony-resonix/
 │   └── build-resonix.sh      # 交叉编译脚本（arm64 静态 ELF）
 ├── hnp/resonix/Makefile      # 可选：把 bridge 挂进 Termony base.hnp
 ├── scripts/apply-termony-patches.sh  # 一键把改造应用到 Termony 工程副本
+├── tests/                    # mock ACP 引擎 + 端到端测试（x86 上可复现验证）
 ├── docs/DEPLOY.md            # rootfs 部署 / ACP 校准 / 打包 HNP 全流程
 ├── LICENSE                   # 本项目 MIT
 └── THIRD_PARTY_LICENSES.md   # resonix MIT / Termony MIT / qemu GPL 说明
