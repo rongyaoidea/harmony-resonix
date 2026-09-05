@@ -1,7 +1,8 @@
 # DEPLOY — resonix 引擎部署到 Termony（qemu-vroot / Alpine rootfs）
 
-> 目标设备：HarmonyOS Computer（2in1，如 MateBook Pro）。
-> 消费级 NEXT 手机未验证（Termony 目前 deviceTypes 为 2in1）。
+> 目标设备：HarmonyOS Computer（2in1，如 MateBook Pro）与 **HarmonyOS NEXT 手机**
+> （`apply-termony-patches.sh` 已自动把 `"phone"` 追加进 deviceTypes）。
+> 手机端 Agent Tab（Web 聊天 UI）可用；Terminal Tab 见 §4 软键盘限制。
 
 ## 0. 前置
 
@@ -109,7 +110,11 @@ make resonix && make base.hnp && make copy
 
 | 项 | 状态 |
 |---|---|
-| Termony deviceTypes | 仅 2in1；手机端待 Termony 支持后自动解锁 |
+| Termony deviceTypes | 补丁已自动追加 `"phone"`（2in1 + tablet + phone 均可安装；实机联调待做） |
+| 手机端 Agent Tab | ✅ 可用：WebView + loopback + 软键盘输入均为标准能力 |
+| 手机端 Terminal Tab | ⚠️ 软键盘未接入：终端输入依赖物理键盘 `onKeyEvent`（上游为 2in1 设计），手机需补 XComponent 软键盘桥接后方可打字 |
+| 手机后台管控 | NEXT 手机对后台进程更激进，切后台久了引擎可能被冻结；回前台后 AgentTab 可用「重试」重新拉起 |
+| 手机安装门槛 | 需真机调试：AGC 免费调试证书绑定设备 UDID + 开发者模式 + `hdc install`；上架应用市场需另行签名分发 |
 | 内置 Terminal App | 无 mprotect R+X 权限，不能用 elf-loader，必须用 Termony |
 | ELF 签名 | qemu-vroot 用户态模拟路径无需宿主签名；宿主直跑需 ohos-bst-light 自签 |
 | Go 版本 | go.mod 若要求 >1.21，构建机需装新版 Go（golang.google.cn/dl） |

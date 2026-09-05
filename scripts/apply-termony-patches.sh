@@ -34,8 +34,27 @@ grep -n "startEngine" "$NAPI" || { echo "  !! 注册失败，请对照 termony-p
 echo "==> [4/5] 替换前端 Index.ets（Tabs: Agent WebView + Terminal）"
 cp -v "$HERE/termony-patches/ets/pages/Index.ets" "$TARGET/entry/src/main/ets/pages/Index.ets"
 
-echo "==> [5/5] 检查 deviceTypes（Termony 默认 2in1；手机支持随 Termony 上游解锁）"
-grep -n "deviceTypes" -A 2 "$TARGET/entry/src/main/module.json5" | head -4
+echo "==> [5/5] deviceTypes 追加 phone（消费级 HarmonyOS NEXT 手机端支持）"
+MODULE="$TARGET/entry/src/main/module.json5"
+if grep -A 4 '"deviceTypes"' "$MODULE" | grep -q '"phone"'; then
+  echo "  deviceTypes 已含 phone，跳过"
+elif command -v python3 >/dev/null 2>&1; then
+  python3 - "$MODULE" <<'PYEOF'
+import re, sys
+p = sys.argv[1]
+s = open(p, encoding='utf-8').read()
+m = re.search(r'"deviceTypes"\s*:\s*\[([^\]]*)\]', s)
+assert m, 'deviceTypes 数组未找到'
+inner = m.group(1).rstrip()
+add = (inner + ',\n      "phone"') if inner.strip() else '      "phone"'
+s = s[:m.start(1)] + add + '\n    ' + s[m.end(1):]
+open(p, 'w', encoding='utf-8').write(s)
+print('  已追加 "phone" 到 deviceTypes')
+PYEOF
+else
+  echo "  !! 未找到 python3，请手工在 module.json5 的 deviceTypes 数组中加入 \"phone\""
+fi
+grep -n "deviceTypes" -A 4 "$MODULE" | head -6
 
 cat <<'EOF'
 

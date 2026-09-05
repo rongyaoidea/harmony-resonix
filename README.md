@@ -99,7 +99,8 @@ cd ../.. && ./scripts/apply-termony-patches.sh ../termony
 
 - [x] 工具审批（session/request_permission → 应用内自定义审批卡片，allow/reject 应答已测；ArkTS 层 `onConfirm` 兜底 `showAlertDialog` 真实弹窗）
 - [x] 前端 UI 重设计（finesse-ui product register × Claude 主题：tinted neutrals / 衬线标题 / terracotta 品牌色 / 深浅双主题 / 审批卡片 / 建议 chips；无头浏览器截图验证）
-- [ ] 鸿蒙设备实机联调（Termony + rootfs + bridge + Web UI 全链路）
+- [ ] 鸿蒙设备实机联调（2in1 + 手机：rootfs + bridge + Web UI 全链路）
+- [x] 手机端 deviceTypes 支持（apply 补丁自动追加 `"phone"`；Agent Tab 手机可用，Terminal Tab 待软键盘桥接）
 - [ ] HAP 出包（Command Line Tools `hvigorw assembleHap` + 签名，见 docs/RESEARCH.md §1）
 - [ ] 会话持久化映射到应用沙箱目录
 - [ ] 随 Termony 上游解锁手机端（deviceTypes 追加 phone）
@@ -107,7 +108,8 @@ cd ../.. && ./scripts/apply-termony-patches.sh ../termony
 
 ## 已知限制
 
-- Termony 当前 deviceTypes 为 **2in1**（鸿蒙电脑/平板形态）；消费级 NEXT 手机端待上游解锁；
+- Termony 上游 deviceTypes 为 2in1：本工程补丁已自动追加 `phone`，**Agent Tab（聊天 UI）手机端可用**；Terminal Tab 需物理键盘，手机软键盘桥接待补（见 docs/DEPLOY.md §4）；
+- 手机端实机未验证：安装需真机调试证书（AGC 绑定 UDID + 开发者模式）；
 - resonix 官方未发布 linux-ohos 二进制，采用上游源码交叉编译 + rootfs 运行路径；
 - 引擎能力受 rootfs 内工具链限制（git/bash 在 rootfs 内需 apk add）。
 
