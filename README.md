@@ -100,6 +100,7 @@ cd ../.. && ./scripts/apply-termony-patches.sh ../termony
 - [ ] 鸿蒙设备实机联调（Termony + rootfs + bridge + Web UI 全链路）
 - [x] resonix ACP 入口校准（`reasonix acp`，已按上游 docs/ACP.zh-CN.md 与 internal/cli 确认）
 - [x] bridge ↔ ACP 引擎端到端协议验证（mock 引擎：三步 RPC + 推送通知全通）
+- [x] resonix CLI 交叉编译验证（`cmd/reasonix` → 43MB arm64 **静态** ELF，`reasonix acp` 与全套 ACP 方法已确认在二进制内；预编译产物见 `hnp/resonix/prebuilt/`）
 - [ ] rootfs 首启自动引导（rawfile 释放 / 应用内下载）
 - [ ] 会话持久化映射到应用沙箱目录；工具审批（PermissionRequest）原生弹窗
 - [ ] 随 Termony 上游解锁手机端（deviceTypes 追加 phone）
