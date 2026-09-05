@@ -19,6 +19,8 @@ export CGO_ENABLED=0
 export GOOS=linux
 export GOARCH=arm64
 export GOFLAGS=-mod=mod
+# 模块代理：默认走国内镜像（海外/CI 可 GOPROXY=https://proxy.golang.org,direct 覆盖）
+export GOPROXY="${GOPROXY:-https://goproxy.cn,direct}"
 
 echo "==> [1/2] 构建 bridge（HTTP 桥 + Web UI 托管）"
 # bridge 嵌入 site/ 构建产物（见 bridge/main.go 的 //go:embed）
