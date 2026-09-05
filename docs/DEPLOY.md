@@ -11,23 +11,31 @@
 
 ## 1. 部署 rootfs 与引擎
 
-### 路径一：App 内首次引导（推荐给最终用户，TODO 路线图）
+### 路径一：App 内首次引导（已实现：检测 + 指引卡片）
 
-ArkTS 端从 rawfile 释放 rootfs 到 `<filesDir>/alpine_rootfs`。当前工程未实现自动释放，先用路径二。
+Agent Tab 启动时用 `fs.accessSync` 检测 `<filesDir>/alpine_rootfs`；未部署则显示
+引导卡片（三步说明 + 「复制部署命令」按钮，命令与路径二一致），部署完点「重试」。
+rawfile 内置 rootfs 全自动释放仍为后续可选增强（会增加 HAP 体积）。
 
 ### 路径二：终端手动（当前验证路径）
 
 在 resonix-harmony 的 **Terminal Tab**（即 Termony 原终端）里执行：
 
 ```sh
-# 1) rootfs 到位（从 PC 侧 hdc push，或 App 沙箱可读写目录直接 wget）
+# 0) PC 侧：把两个文件推到应用沙箱 files 目录（hdcd 开发者模式为 root，可写）
+#    <bundle> 换成实际包名（hdc shell bm dump -a 可查）
+hdc file send alpine-minirootfs-3.22.0-aarch64.tar.gz \
+  /data/app/el2/100/base/<bundle>/haps/entry/files/alpine.tar.gz
+hdc file send bridge \
+  /data/app/el2/100/base/<bundle>/haps/entry/files/bridge
+
+# 1) App 内（Terminal Tab）：rootfs 到位
 mkdir -p /data/storage/el2/base/haps/entry/files/alpine_rootfs
 cd /data/storage/el2/base/haps/entry/files
-hdc file send alpine-minirootfs-3.22.0-aarch64.tar.gz alpine.tar.gz   # 在 PC 侧执行 hdc
 tar xzf alpine.tar.gz -C alpine_rootfs
 
 # 2) bridge 二进制放进 rootfs
-hdc file send bridge alpine_rootfs/usr/local/bin/bridge               # PC 侧
+cp bridge alpine_rootfs/usr/local/bin/bridge
 chmod +x alpine_rootfs/usr/local/bin/bridge
 
 # 3) 手动验证（关键！）
@@ -62,6 +70,20 @@ WS客户端 → bridge(/ws) → stdin(\n结尾行) → mock_acp(stdio JSON-RPC)
 - [x] `initialize` → 返回 agentInfo
 - [x] `session/new` → 返回 sessionId
 - [x] `session/prompt` → 先收 `session/update` 推送通知，再收 `stopReason=end_turn` 应答
+- [x] `session/request_permission` → 客户端允许后引擎收到 `allow_once`，继续执行
+
+### 2.2 工具审批行为
+
+ACP `session/request_permission`（引擎执行工具前征询）在 Web UI 内以
+`confirm()` 处理——鸿蒙 Web 组件会将其渲染为**原生对话框**（确定=允许首个
+`allow*` 选项，取消=选择首个 `reject*` 选项；无匹配选项时回退 `cancelled`）。
+审批动作会在会话日志中留痕（✅/⛔ 行）。
+
+### 2.3 rootfs 首启引导
+
+AgentTab 启动引擎前先检测 `alpine_rootfs` 目录是否存在（`fs.accessSync`）：
+未部署时不再盲目拉起引擎，而是显示三步部署指引卡片（下载 minirootfs →
+`hdc file send` → 终端 Tab 解压），详见下文第 1 节。
 
 **关键实现点**：ACP 为行分隔 JSON，bridge 向引擎 stdin 写入时必须保证消息以
 `\n` 结尾，否则引擎按行读取会永久阻塞（此 bug 已在 main.go 修复并回归测试）。

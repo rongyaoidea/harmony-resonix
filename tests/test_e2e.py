@@ -53,6 +53,14 @@ def rpc(s, m, expect_id, timeout=5):
         op, msg = ws_recv(s, timeout=deadline - time.time())
         if op == "ping":
             continue
+        # 引擎的工具审批请求：自动允许（覆盖 request_permission 往返）
+        if msg.get("method") == "session/request_permission":
+            opts = msg["params"].get("options", [])
+            allow = next((o for o in opts if str(o.get("kind","")).startswith("allow")), opts[0])
+            ws_send(s, {"jsonrpc":"2.0","id":msg["id"],
+                        "result":{"outcome":{"outcome":"selected","optionId":allow["optionId"]}}})
+            print(f"  [perm] auto-allowed: {msg['params'].get('toolCall',{}).get('title','')}")
+            continue
         if msg.get("id") == expect_id:
             return msg
         print(f"  [push] {json.dumps(msg, ensure_ascii=False)[:110]}")

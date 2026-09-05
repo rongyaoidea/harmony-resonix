@@ -48,6 +48,17 @@ const ENGINE_ENV: string[] = [
 ];
 const ENGINE_CWD = '/storage/Users/currentUser';
 
+// rootfs 未部署时的引导命令（在 Terminal Tab 粘贴执行；两个上传文件
+// 需在 PC 侧用 hdc file send 放入 files/ 目录，见 docs/DEPLOY.md §1）
+const ROOTFS_SETUP_CMD: string =
+  'cd /data/storage/el2/base/haps/entry/files\n' +
+  'mkdir -p alpine_rootfs\n' +
+  'tar xzf alpine.tar.gz -C alpine_rootfs\n' +
+  'chmod +x alpine_rootfs/usr/local/bin/bridge\n' +
+  '# 注：alpine.tar.gz 与 bridge 需先在 PC 侧执行\n' +
+  '#   hdc file send alpine.tar.gz  /data/app/el2/100/base/<bundle>/haps/entry/files/\n' +
+  '#   hdc file send bridge         /data/app/el2/100/base/<bundle>/haps/entry/files/';
+
 async function probeEngine(port: number): Promise<boolean> {
   const req = http.createHttp();
   try {
@@ -74,6 +85,7 @@ struct AgentTab {
   @State engineUrl: string = '';
   @State engineStatus: string = '未启动';
   @State bootFailed: boolean = false;
+  @State rootfsMissing: boolean = false;
   webController: webview.WebviewController = new webview.WebviewController();
 
   aboutToAppear(): void {
@@ -82,6 +94,20 @@ struct AgentTab {
 
   async bootEngine(): Promise<void> {
     this.bootFailed = false;
+    // rootfs 首启引导：未部署 Alpine rootfs 时直接给出指引，不盲目拉引擎
+    let rootfsReady = false;
+    try {
+      rootfsReady = fs.accessSync(ROOTFS_DIR);
+    } catch (e) {
+      rootfsReady = false;
+    }
+    if (!rootfsReady) {
+      this.rootfsMissing = true;
+      this.engineStatus = '尚未部署 Alpine rootfs';
+      hilog.warn(DOMAIN, TAG, 'rootfs missing: %{public}s', ROOTFS_DIR);
+      return;
+    }
+    this.rootfsMissing = false;
     this.engineStatus = '启动引擎…';
     const pid = testNapi.startEngine(ENGINE_CMD, ENGINE_ARGS, ENGINE_ENV, ENGINE_CWD);
     hilog.info(DOMAIN, TAG, 'startEngine pid=%{public}d', pid);
@@ -117,6 +143,34 @@ struct AgentTab {
         Column({ space: 12 }) {
           Text('resonix for HarmonyOS').fontSize(22).fontWeight(FontWeight.Bold)
           Text(this.engineStatus).fontSize(14).opacity(0.8)
+          if (this.rootfsMissing) {
+            // 首启引导：三步部署说明（在终端 Tab 内执行，无需 hdc）
+            Column({ space: 6 }) {
+              Text('首次使用需要部署 Alpine rootfs：')
+                .fontSize(13).fontWeight(FontWeight.Medium)
+              Text('1. 电脑上下载 Alpine minirootfs（aarch64）')
+                .fontSize(12).opacity(0.85)
+              Text('2. hdc file send 推送到应用 files 目录')
+                .fontSize(12).opacity(0.85)
+              Text('3. 本页切到「终端」Tab 执行 tar 解压')
+                .fontSize(12).opacity(0.85)
+              Text('详见工程 docs/DEPLOY.md 第 1 节（含可复制命令）')
+                .fontSize(12).opacity(0.6)
+              Button('复制部署命令').onClick(() => {
+                const paste = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, ROOTFS_SETUP_CMD);
+                pasteboard.getSystemPasteboard().setData(paste);
+                promptAction.showToast({ message: '已复制，到「终端」Tab 粘贴执行' });
+              })
+              Button('重试').onClick(() => {
+                this.engineUrl = '';
+                this.bootEngine();
+              })
+            }
+            .alignItems(HorizontalAlign.Start)
+            .padding(12)
+            .borderRadius(10)
+            .backgroundColor('#1c2029')
+          }
           if (this.bootFailed) {
             Button('重试').onClick(() => {
               this.engineUrl = '';

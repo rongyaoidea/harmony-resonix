@@ -101,8 +101,9 @@ cd ../.. && ./scripts/apply-termony-patches.sh ../termony
 - [x] resonix ACP 入口校准（`reasonix acp`，已按上游 docs/ACP.zh-CN.md 与 internal/cli 确认）
 - [x] bridge ↔ ACP 引擎端到端协议验证（mock 引擎：三步 RPC + 推送通知全通）
 - [x] resonix CLI 交叉编译验证（`cmd/reasonix` → 43MB arm64 **静态** ELF，`reasonix acp` 与全套 ACP 方法已确认在二进制内；预编译产物见 `hnp/resonix/prebuilt/`）
-- [ ] rootfs 首启自动引导（rawfile 释放 / 应用内下载）
-- [ ] 会话持久化映射到应用沙箱目录；工具审批（PermissionRequest）原生弹窗
+- [x] rootfs 首启引导（AgentTab 检测 rootfs 缺失 → 显示部署指引卡片，不盲目拉引擎）
+- [x] 工具审批（session/request_permission → Web confirm() 原生对话框，allow/reject 应答已测）
+- [ ] 会话持久化映射到应用沙箱目录
 - [ ] 随 Termony 上游解锁手机端（deviceTypes 追加 phone）
 - [ ] site/（resonix 官方 Astro Web UI）构建产物替换内嵌最小 UI（可选增强）
 

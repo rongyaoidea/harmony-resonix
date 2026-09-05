@@ -124,6 +124,41 @@ function connect() {
           default:
             if (up.content?.text) appendAgent(up.content.text);
         }
+      } else if (m.method === 'session/request_permission') {
+        // ACP 工具审批：引擎请求执行工具前先征询客户端。
+        // confirm() 由鸿蒙 Web 组件渲染为原生对话框（onConfirm 事件）。
+        const p = m.params || {};
+        const opts = Array.isArray(p.options) ? p.options : [];
+        const allow = opts.find(o => String(o.kind || '').startsWith('allow')) || opts[0];
+        const reject = opts.find(o => String(o.kind || '').startsWith('reject')) || opts[1];
+        const title = p.toolCall?.title || p.toolCall?.toolCallId || '工具调用';
+        const ok = confirm(`resonix 请求执行工具：\n\n${title}\n\n是否允许？`);
+        const pick = ok ? allow : reject;
+        if (pick) {
+          ws.send(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: {
+            outcome: { outcome: 'selected', optionId: pick.optionId }
+          }}));
+        } else {
+          ws.send(JSON.stringify({ jsonrpc: '2.0', id: m.id, result: {
+            outcome: { outcome: 'cancelled' }
+          }}));
+        }
+        add('sys', `${ok ? '✅ 已允许' : '⛔ 已拒绝'}：${title}`);
+      } else if (m.method === 'session/request_permission') {
+        // ACP 工具审批：必须应答，否则引擎一直阻塞等待。
+        // HarmonyOS Web 组件会把 confirm() 渲染为原生对话框。
+        const p = m.params || {};
+        const opts = Array.isArray(p.options) ? p.options : [];
+        const allow = opts.find(o => String(o.kind || '').startsWith('allow')) || opts[0];
+        const reject = opts.find(o => String(o.kind || '').startsWith('reject'));
+        const title = p.toolCall?.title || p.toolCall?.toolCallId || '一次工具调用';
+        const ok = confirm(`resonix 请求执行工具：\n\n${title}\n\n允许本次调用？`);
+        const pick = ok ? allow : (reject || opts.find(o => o !== allow));
+        ws.send(JSON.stringify({
+          jsonrpc: '2.0', id: m.id,
+          result: { outcome: { outcome: pick ? 'selected' : 'cancelled', optionId: pick?.optionId } }
+        }));
+        add('sys', `${ok ? '✅ 已允许' : '⛔ 已拒绝'}：${title}`);
       } else if (m.method) {
         add('sys', JSON.stringify(m).slice(0, 200));
       }

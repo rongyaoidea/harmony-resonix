@@ -13,6 +13,17 @@ for line in sys.stdin:
         print(json.dumps({"jsonrpc":"2.0","id":mid,"result":{"sessionId":"mock-s1"}}), flush=True)
     elif method == "session/prompt":
         text = "".join(c.get("text","") for c in m["params"].get("prompt",[]))
-        upd = {"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"mock-s1","update":{"sessionUpdate":"agent_message_chunk","content":{"type":"text","text":f"[mock] 收到: {text} → 已在鸿蒙 rootfs 内规划 3 步任务。"}}}}
+        # 先请求工具审批（覆盖 request_permission 往返路径）
+        perm = {"jsonrpc":"2.0","id":"perm-1","method":"session/request_permission",
+                "params":{"sessionId":"mock-s1","toolCall":{"toolCallId":"t1","title":"[mock] run: ls /"},
+                          "options":[{"optionId":"allow_once","name":"Allow","kind":"allow_once"},
+                                     {"optionId":"reject_once","name":"Reject","kind":"reject_once"}]}}
+        print(json.dumps(perm), flush=True)
+        try:
+            ans = json.loads(input())
+            chosen = ans.get("result",{}).get("outcome",{}).get("optionId","<cancelled>")
+        except Exception:
+            chosen = "<no-answer>"
+        upd = {"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"mock-s1","update":{"sessionUpdate":"agent_message_chunk","content":{"type":"text","text":f"[mock] 收到: {text} → 已在鸿蒙 rootfs 内规划 3 步任务。（权限审批={chosen}）"}}}}
         print(json.dumps(upd), flush=True)
         print(json.dumps({"jsonrpc":"2.0","id":mid,"result":{"stopReason":"end_turn"}}), flush=True)
