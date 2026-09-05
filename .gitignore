@@ -1,0 +1,3 @@
+# 构建产物不入库（构建方式见 engine/build-resonix.sh）
+hnp/resonix/prebuilt/
+engine/bridge/bin/

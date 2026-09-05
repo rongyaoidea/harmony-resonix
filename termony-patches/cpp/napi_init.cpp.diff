@@ -1,0 +1,25 @@
+--- a/entry/src/main/cpp/napi_init.cpp
++++ b/entry/src/main/cpp/napi_init.cpp
+@@ 说明：三处改动，全部是“加行”，不修改 Termony 任何既有逻辑。
+@@
+@@ 1) 文件顶部 include 区（与 #include "terminal.h" 相邻）新增：
+@@
+ #include "terminal.h"
++#include "engine.h"
+@@
+@@ 2) CMakeLists.txt（entry/src/main/cpp/CMakeLists.txt）新增一行源文件：
+@@
+ add_library(entry SHARED napi_init.cpp terminal.cpp)
++add_library(entry SHARED napi_init.cpp terminal.cpp engine.cpp)
+@@ （实际写法：在 add_library 的源文件列表里追加 engine.cpp 一个词）
+@@
+@@ 3) 属性表 desc[] 中（"pushPaste" 一行之后）追加三个导出：
+@@
+         {"pushPaste", nullptr, PushPaste, nullptr, nullptr, nullptr, napi_default, nullptr},
++        {"startEngine", nullptr, engine_napi::StartEngine, nullptr, nullptr, nullptr, napi_default, nullptr},
++        {"stopEngine", nullptr, engine_napi::StopEngine, nullptr, nullptr, nullptr, napi_default, nullptr},
++        {"engineRunning", nullptr, engine_napi::EngineRunning, nullptr, nullptr, nullptr, napi_default, nullptr},
+@@
+@@ 由于 engine.cpp 的三个函数在全局命名空间，为避免与既有符号冲突，
+@@ 建议在 engine.h/engine.cpp 中把三个实现放入 namespace engine_napi。
+@@ （本仓库交付的 engine.cpp 已使用 namespace engine_napi。）
