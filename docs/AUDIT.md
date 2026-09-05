@@ -58,6 +58,14 @@ Web 组件注册 `onConfirm` 回调并调用 `event.result.handleConfirm(true)`�
 正确插入 `engine_napi::{Start,Stop,EngineRunning}`，本次验证已确认）。删除空壳
 及其在 `engine.h` 中的声明，消除误导性死代码。
 
+### 11. [逻辑错误] Index.ets `onConfirm` 自动放行（二轮审查，2026-09 UI 调研时发现）
+ArkWeb 官方文档明确：`onConfirm` 返回 `true` 后应用需**自行绘制弹窗**并应答
+`JsResult`；此前实现直接 `handleConfirm(true)`——所有网页 `confirm()` 一律自动
+确认，等于审批不审（且 `handleConfirm` 不接受布尔参数）。修复：改为
+`getUIContext().showAlertDialog()`（取消/确定双键、`autoCancel:false`），异步
+应答 `handleCancel()/handleConfirm()`。同时 Web UI 侧工具审批升级为应用内
+自定义审批卡片，不再依赖 `confirm()`（详见 docs/RESEARCH.md §5）。
+
 ## 已确认无问题（不作为 bug）
 
 - ws.go 分片重组、Ping/Pong、UTF-8 跨分片累积：逻辑正确。
@@ -72,3 +80,5 @@ Web 组件注册 `onConfirm` 回调并调用 `event.result.handleConfirm(true)`�
   `session/request_permission` 审批闭环全链路 PASS。
 - 重连场景（自定义脚本）：断开→重连仍可 initialize+session/new；结束时无 mock
   引擎僵尸进程（进程组清理生效）。
+- UI 渲染与交互（playwright 无头浏览器，390×844 手机视口）：浅色/深色主题、
+  空状态 hero、建议 chips、消息气泡、**审批卡片弹出→允许→回显闭环**均截图验证通过。

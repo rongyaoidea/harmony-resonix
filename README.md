@@ -97,12 +97,10 @@ cd ../.. && ./scripts/apply-termony-patches.sh ../termony
 
 ## 路线图
 
+- [x] 工具审批（session/request_permission → 应用内自定义审批卡片，allow/reject 应答已测；ArkTS 层 `onConfirm` 兜底 `showAlertDialog` 真实弹窗）
+- [x] 前端 UI 重设计（finesse-ui product register × Claude 主题：tinted neutrals / 衬线标题 / terracotta 品牌色 / 深浅双主题 / 审批卡片 / 建议 chips；无头浏览器截图验证）
 - [ ] 鸿蒙设备实机联调（Termony + rootfs + bridge + Web UI 全链路）
-- [x] resonix ACP 入口校准（`reasonix acp`，已按上游 docs/ACP.zh-CN.md 与 internal/cli 确认）
-- [x] bridge ↔ ACP 引擎端到端协议验证（mock 引擎：三步 RPC + 推送通知全通）
-- [x] resonix CLI 交叉编译验证（`cmd/reasonix` → 43MB arm64 **静态** ELF，`reasonix acp` 与全套 ACP 方法已确认在二进制内；预编译产物见 `hnp/resonix/prebuilt/`）
-- [x] rootfs 首启引导（AgentTab 检测 rootfs 缺失 → 显示部署指引卡片，不盲目拉引擎）
-- [x] 工具审批（session/request_permission → Web confirm() 原生对话框，allow/reject 应答已测）
+- [ ] HAP 出包（Command Line Tools `hvigorw assembleHap` + 签名，见 docs/RESEARCH.md §1）
 - [ ] 会话持久化映射到应用沙箱目录
 - [ ] 随 Termony 上游解锁手机端（deviceTypes 追加 phone）
 - [ ] site/（resonix 官方 Astro Web UI）构建产物替换内嵌最小 UI（可选增强）
@@ -117,5 +115,13 @@ cd ../.. && ./scripts/apply-termony-patches.sh ../termony
 
 见 [docs/AUDIT.md](docs/AUDIT.md) —— v0.3 审查修复：index.html 重复分支死代码、engine.cpp
 启动失败误判、Web 审批 `onConfirm` 缺失、构建脚本 `./cmd/...` 误编译、ws 帧大小上限、
-引擎进程组清理单例、子进程 fd 泄漏、`EngineRunning` 脏值、删除 `RegisterEngineNapi` 空壳。
+引擎进程组清理单例、子进程 fd 泄漏、`EngineRunning` 脏值、删除 `RegisterEngineNapi` 空壳；
+v0.4 二轮审查：`onConfirm` 自动放行逻辑错误（`showAlertDialog` 修复）。
+
+## 前端设计与调研
+
+见 [docs/RESEARCH.md](docs/RESEARCH.md) —— 鸿蒙前后端深度调研：HAP 命令行构建链
+（Command Line Tools / hvigorw / 签名，Linux 可用）、finesse-ui 设计 skill（brand/product
+双 register）、Claude 主题完整 token 表、ArkWeb `onConfirm`/`JsResult` 官方行为、
+ArkUI 状态管理与 NAPI 进程模型评估。
 

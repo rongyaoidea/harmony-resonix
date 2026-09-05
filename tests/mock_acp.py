@@ -16,8 +16,8 @@ for line in sys.stdin:
         # 先请求工具审批（覆盖 request_permission 往返路径）
         perm = {"jsonrpc":"2.0","id":"perm-1","method":"session/request_permission",
                 "params":{"sessionId":"mock-s1","toolCall":{"toolCallId":"t1","title":"[mock] run: ls /"},
-                          "options":[{"optionId":"allow_once","name":"Allow","kind":"allow_once"},
-                                     {"optionId":"reject_once","name":"Reject","kind":"reject_once"}]}}
+                          "options":[{"optionId":"allow_once","name":"允许执行","kind":"allow_once"},
+                                     {"optionId":"reject_once","name":"拒绝","kind":"reject_once"}]}}
         print(json.dumps(perm), flush=True)
         try:
             ans = json.loads(input())

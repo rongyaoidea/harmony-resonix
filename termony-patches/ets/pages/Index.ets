@@ -139,50 +139,76 @@ struct AgentTab {
   build() {
     Stack() {
       if (this.engineUrl === '') {
-        // 引擎未就绪：状态页
-        Column({ space: 12 }) {
-          Text('resonix for HarmonyOS').fontSize(22).fontWeight(FontWeight.Bold)
-          Text(this.engineStatus).fontSize(14).opacity(0.8)
+        // 引擎未就绪：状态页（Claude 主题：parchment 画布 + 衬线标题）
+        Column({ space: 14 }) {
+          Text('✳')
+            .fontSize(30)
+            .fontColor('#C96442')
+          Text('resonix for HarmonyOS')
+            .fontSize(24)
+            .fontWeight(FontWeight.Medium)
+            .fontFamily('Georgia, serif')
+            .fontColor('#141413')
+          Text(this.engineStatus).fontSize(14).fontColor('#7B7974')
           if (this.rootfsMissing) {
             // 首启引导：三步部署说明（在终端 Tab 内执行，无需 hdc）
-            Column({ space: 6 }) {
+            Column({ space: 8 }) {
               Text('首次使用需要部署 Alpine rootfs：')
-                .fontSize(13).fontWeight(FontWeight.Medium)
+                .fontSize(13).fontWeight(FontWeight.Medium).fontColor('#141413')
               Text('1. 电脑上下载 Alpine minirootfs（aarch64）')
-                .fontSize(12).opacity(0.85)
+                .fontSize(12).fontColor('#5E5D59')
               Text('2. hdc file send 推送到应用 files 目录')
-                .fontSize(12).opacity(0.85)
+                .fontSize(12).fontColor('#5E5D59')
               Text('3. 本页切到「终端」Tab 执行 tar 解压')
-                .fontSize(12).opacity(0.85)
+                .fontSize(12).fontColor('#5E5D59')
               Text('详见工程 docs/DEPLOY.md 第 1 节（含可复制命令）')
-                .fontSize(12).opacity(0.6)
-              Button('复制部署命令').onClick(() => {
-                const paste = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, ROOTFS_SETUP_CMD);
-                pasteboard.getSystemPasteboard().setData(paste);
-                promptAction.showToast({ message: '已复制，到「终端」Tab 粘贴执行' });
-              })
-              Button('重试').onClick(() => {
+                .fontSize(12).fontColor('#9C9A92')
+              Button('复制部署命令')
+                .buttonStyle(ButtonStyleMode.NORMAL)
+                .backgroundColor('#141413')
+                .fontColor('#FAF9F5')
+                .borderRadius(20)
+                .onClick(() => {
+                  const paste = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, ROOTFS_SETUP_CMD);
+                  pasteboard.getSystemPasteboard().setData(paste);
+                  promptAction.showToast({ message: '已复制，到「终端」Tab 粘贴执行' });
+                })
+              Button('重试')
+                .buttonStyle(ButtonStyleMode.NORMAL)
+                .backgroundColor('#F5F4ED')
+                .fontColor('#141413')
+                .borderRadius(20)
+                .border({ width: 1, color: '#E7E6E1' })
+                .onClick(() => {
+                  this.engineUrl = '';
+                  this.bootEngine();
+                })
+            }
+            .alignItems(HorizontalAlign.Start)
+            .padding(16)
+            .borderRadius(16)
+            .backgroundColor('#FAF9F5')
+            .border({ width: 1, color: '#E7E6E1' })
+            .shadow({ radius: 12, color: 'rgba(20,20,19,0.06)', offsetX: 0, offsetY: 2 })
+          }
+          if (this.bootFailed) {
+            Button('重试')
+              .buttonStyle(ButtonStyleMode.NORMAL)
+              .backgroundColor('#141413')
+              .fontColor('#FAF9F5')
+              .borderRadius(20)
+              .onClick(() => {
                 this.engineUrl = '';
                 this.bootEngine();
               })
-            }
-            .alignItems(HorizontalAlign.Start)
-            .padding(12)
-            .borderRadius(10)
-            .backgroundColor('#1c2029')
-          }
-          if (this.bootFailed) {
-            Button('重试').onClick(() => {
-              this.engineUrl = '';
-              this.bootEngine();
-            })
             Text(`排障：终端 Tab 执行 tail -50 ${ENGINE_LOG}`)
-              .fontSize(12).opacity(0.6)
+              .fontSize(12).fontColor('#9C9A92')
           }
-          LoadingProgress().width(36).height(36)
+          LoadingProgress().width(36).height(36).color('#C96442')
         }
         .width('100%').height('100%')
         .justifyContent(FlexAlign.Center)
+        .backgroundColor('#F5F4ED')
       } else {
         // 引擎就绪：Web UI
         Column() {
@@ -193,11 +219,30 @@ struct AgentTab {
             .databaseAccess(true)
             .zoomAccess(true)
             .onConfirm((event) => {
-              // 让 HarmonyOS 弹出原生确认框（Web UI 内工具审批用 confirm() 触发）。
-              // 不在此自定义 UI；返回 true 表示交由系统默认确认框处理。
-              if (event && event.result) {
-                event.result.handleConfirm(true);
+              // ArkWeb 不自动弹出网页 confirm()：回调内必须由应用绘制弹窗并
+              // 通过 JsResult 异步应答，否则渲染进程阻塞（官方文档明确要求）。
+              // 注意：不能直接 handleConfirm()——那等于所有审批自动放行。
+              if (!event || !event.result) {
+                return true;
               }
+              this.getUIContext().showAlertDialog({
+                title: '网页请求确认',
+                message: event.message,
+                autoCancel: false,
+                alignment: DialogAlignment.Center,
+                primaryButton: {
+                  value: '取消',
+                  action: () => {
+                    event.result.handleCancel();
+                  }
+                },
+                secondaryButton: {
+                  value: '确定',
+                  action: () => {
+                    event.result.handleConfirm();
+                  }
+                }
+              });
               return true;
             })
             .width('100%')
